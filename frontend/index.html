@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-background">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Settlement Reconciliation &amp; Forecasting Copilot</title>
+    <meta name="description" content="AI Finance Controller — Settlement Reconciliation, ML Confidence Scoring, Monte Carlo Forecasting, RAG Q&A Agent. Razorpay Buildathon Track 04."/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#213145",
+                        "error": "#ba1a1a",
+                        "on-primary-container": "#fefcff",
+                        "on-secondary-fixed-variant": "#3c475a",
+                        "tertiary": "#595c5e",
+                        "surface-container": "#e5eeff",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "on-error": "#ffffff",
+                        "surface-bright": "#f8f9ff",
+                        "on-primary-fixed": "#001a42",
+                        "surface-container-high": "#dce9ff",
+                        "surface-tint": "#005ac2",
+                        "inverse-on-surface": "#eaf1ff",
+                        "surface-container-low": "#eff4ff",
+                        "on-primary-fixed-variant": "#004395",
+                        "surface": "#f8f9ff",
+                        "inverse-primary": "#adc6ff",
+                        "surface-dim": "#cbdbf5",
+                        "secondary": "#545f73",
+                        "primary": "#0058be",
+                        "surface-container-highest": "#d3e4fe",
+                        "on-surface-variant": "#424754",
+                        "secondary-fixed": "#d8e3fb",
+                        "primary-container": "#2170e4",
+                        "secondary-fixed-dim": "#bcc7de",
+                        "on-surface": "#0b1c30",
+                        "on-secondary-fixed": "#111c2d",
+                        "tertiary-fixed-dim": "#c4c7c9",
+                        "primary-fixed-dim": "#adc6ff",
+                        "tertiary-container": "#727577",
+                        "secondary-container": "#d5e0f8",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "outline": "#727785",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#c2c6d6",
+                        "tertiary-fixed": "#e0e3e5",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-variant": "#d3e4fe",
+                        "background": "#f8f9ff",
+                        "on-secondary-container": "#586377",
+                        "on-primary": "#ffffff",
+                        "on-background": "#0b1c30",
+                        "on-tertiary-container": "#fbfdff",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Outfit"],
+                        "body-lg": ["Inter"],
+                        "headline-sm": ["Outfit"],
+                        "data-mono": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Outfit"],
+                        "display-lg": ["Outfit"],
+                        "label-caps": ["Inter"],
+                        "body-sm": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+        }
+        .glow-active {
+            box-shadow: 0 0 0 1px #0058be, 0 4px 12px rgba(0,88,190,0.1);
+            border-color: #0058be;
+        }
+        body { font-family: 'Outfit', sans-serif; }
+        .spinner { border: 3px solid #e2e8f0; border-top-color: #0058be; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.7s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased min-h-screen flex w-full">
+
+<!-- SideNavBar -->
+<nav class="bg-surface-container-lowest text-primary font-label-caps left-0 h-full w-64 border-r border-outline-variant fixed left-0 top-0 flex flex-col z-40 hidden lg:flex">
+    <div class="p-6 flex flex-col gap-1 border-b border-outline-variant">
+        <span class="font-headline-sm text-headline-sm font-black text-primary tracking-tight flex items-center gap-2">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+            AI Finance Controller
+        </span>
+        <span class="font-body-sm text-body-sm text-on-surface-variant font-medium">Razorpay Buildathon (Track 04)</span>
+    </div>
+    <div class="p-4">
+        <button id="refresh-btn" onclick="refreshData()" class="w-full bg-primary text-on-primary font-label-caps py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-primary-container transition-colors shadow-sm font-semibold">
+            <span class="material-symbols-outlined text-[18px]">refresh</span>
+            Run New Batch
+        </button>
+    </div>
+    <div class="flex-1 overflow-y-auto py-2 px-3 flex flex-col gap-1 font-medium" id="nav-tabs">
+        <a id="tab-rule" onclick="switchView('rule')" class="bg-primary-fixed text-on-primary-fixed rounded-lg transition-all flex items-center gap-3 p-3 font-semibold cursor-pointer">
+            <span class="material-symbols-outlined text-[20px]">rule</span>
+            Rule Engine
+        </a>
+        <a id="tab-ml" onclick="switchView('ml')" class="text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all flex items-center gap-3 p-3 rounded-lg cursor-pointer">
+            <span class="material-symbols-outlined text-[20px]">analytics</span>
+            ML Confidence Scoring
+        </a>
+        <a id="tab-qa" onclick="switchView('qa')" class="text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all flex items-center gap-3 p-3 rounded-lg cursor-pointer">
+            <span class="material-symbols-outlined text-[20px]">psychology</span>
+            Settlement Q&amp;A Agent
+        </a>
+        <a id="tab-mc" onclick="switchView('mc')" class="text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all flex items-center gap-3 p-3 rounded-lg cursor-pointer">
+            <span class="material-symbols-outlined text-[20px]">show_chart</span>
+            Monte Carlo Forecaster
+        </a>
+        <a id="tab-exceptions" onclick="switchView('exceptions')" class="text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all flex items-center gap-3 p-3 rounded-lg cursor-pointer">
+            <span class="material-symbols-outlined text-[20px]">error_outline</span>
+            Honest Exceptions
+        </a>
+    </div>
+    <div class="mt-auto border-t border-outline-variant p-4 flex flex-col gap-1 font-medium">
+        <a class="text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all flex items-center gap-3 p-2.5 rounded-lg text-sm" href="/docs" target="_blank">
+            <span class="material-symbols-outlined text-[20px]">description</span>
+            FastAPI Documentation
+        </a>
+    </div>
+</nav>
+
+<!-- Main Content Canvas -->
+<main class="flex-1 lg:ml-64 flex flex-col min-h-screen">
+    <!-- TopAppBar -->
+    <header class="bg-surface-container-lowest/90 backdrop-blur-xl border-b border-outline-variant flex justify-between items-center w-full px-6 h-16 sticky top-0 z-50">
+        <div class="flex items-center gap-3 md:hidden">
+            <span class="font-headline-sm text-headline-sm font-bold text-primary flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+            </span>
+        </div>
+        <div class="hidden md:flex items-center gap-4">
+            <h1 class="font-headline-sm text-headline-sm text-on-surface font-semibold tracking-tight">⚡ Settlement Reconciliation &amp; Forecasting Copilot</h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <div id="status-badge" class="hidden items-center gap-1.5 text-xs font-semibold text-[#15803d] bg-[#dcfce7] px-3 py-1.5 rounded-full border border-[#86efac]">
+                <span class="w-1.5 h-1.5 bg-[#16a34a] rounded-full inline-block"></span>
+                Live Data
+            </div>
+            <button onclick="toggleCopilotDrawer()" class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant bg-surface-bright">
+                <span class="material-symbols-outlined text-primary text-[18px]">auto_awesome</span>
+                <span class="font-label-caps text-xs font-semibold hidden sm:inline">Ask Copilot</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Dashboard Main View Container -->
+    <div class="p-6 flex flex-col gap-6 w-full max-w-7xl mx-auto" id="view-container">
+        <div class="flex items-center justify-center h-64">
+            <div class="flex flex-col items-center gap-3 text-on-surface-variant">
+                <div class="spinner"></div>
+                <span class="text-sm font-medium">Loading pipeline data from backend…</span>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Copilot Assistant Drawer -->
+<aside id="copilot-drawer" class="bg-surface-container-lowest text-on-surface w-80 border-l border-outline-variant shadow-xl fixed right-0 top-16 h-[calc(100vh-64px)] z-30 flex flex-col hidden">
+    <div class="p-4 border-b border-outline-variant flex items-center justify-between bg-surface-bright">
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">auto_awesome</span>
+            <div>
+                <h2 class="font-headline-sm text-sm text-on-surface font-semibold">Settlement Copilot</h2>
+                <p class="text-xs text-on-surface-variant font-medium">AI Finance Assistant (Grounded RAG)</p>
+            </div>
+        </div>
+        <button onclick="toggleCopilotDrawer()" class="text-on-surface-variant hover:text-primary">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <div class="flex-1 p-4 flex flex-col gap-3 overflow-y-auto bg-surface-container-lowest" id="chat-messages">
+        <div class="bg-surface-container-low p-3 rounded-xl rounded-tl-none self-start max-w-[95%] border border-outline-variant shadow-sm text-on-surface-variant">
+            <p class="text-sm">👋 Ask me anything about your reconciliation records — e.g. <em>"Why didn't ORD_20260812_1123 reconcile?"</em></p>
+        </div>
+    </div>
+    <div class="p-3 border-t border-outline-variant bg-surface-bright">
+        <form onsubmit="handleChatSubmit(event)" class="relative flex items-center">
+            <span class="material-symbols-outlined absolute left-3 text-primary text-[20px]">auto_awesome</span>
+            <input id="chat-input" class="w-full bg-surface-container-lowest border border-outline-variant rounded-full py-2 pl-10 pr-4 text-on-surface text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" placeholder="Ask Copilot..." type="text"/>
+        </form>
+    </div>
+</aside>
+
+<!-- Client JavaScript -->
+<script>
+    let activeView = 'rule';
+    let systemData = null;
+    let donutChart = null;
+    let mcChart = null;
+
+    // ─── DATA LOADING ───────────────────────────────────────────────────────────
+    async function loadData() {
+        setRefreshBtnLoading(true);
+        try {
+            const [recRes, excRes, fcRes, mlRes] = await Promise.all([
+                fetch('/api/reconcile').then(r => r.json()),
+                fetch('/api/exceptions').then(r => r.json()),
+                fetch('/api/forecast', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({forecast_days: 30, num_simulations: 10000})
+                }).then(r => r.json()),
+                fetch('/api/ml-eval').then(r => r.json())
+            ]);
+            systemData = {reconcile: recRes, exceptions: excRes, forecast: fcRes, ml: mlRes};
+            document.getElementById('status-badge').classList.remove('hidden');
+            document.getElementById('status-badge').classList.add('flex');
+        } catch (e) {
+            console.error("Backend API fetch error:", e);
+        } finally {
+            setRefreshBtnLoading(false);
+            renderActiveView();
+        }
+    }
+
+    function setRefreshBtnLoading(loading) {
+        const btn = document.getElementById('refresh-btn');
+        if (!btn) return;
+        btn.innerHTML = loading
+            ? '<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:white;"></div> Loading…'
+            : '<span class="material-symbols-outlined text-[18px]">refresh</span> Run New Batch';
+        btn.disabled = loading;
+    }
+
+    // ─── NAVIGATION ─────────────────────────────────────────────────────────────
+    function switchView(viewName) {
+        activeView = viewName;
+        ['rule','ml','qa','mc','exceptions'].forEach(v => {
+            const el = document.getElementById('tab-' + v);
+            el.className = v === viewName
+                ? "bg-primary-fixed text-on-primary-fixed rounded-lg transition-all flex items-center gap-3 p-3 font-semibold cursor-pointer"
+                : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all flex items-center gap-3 p-3 rounded-lg cursor-pointer";
+        });
+        renderActiveView();
+    }
+
+    function toggleCopilotDrawer() {
+        document.getElementById('copilot-drawer').classList.toggle('hidden');
+    }
+
+    function renderActiveView() {
+        const container = document.getElementById('view-container');
+        container.innerHTML = '';
+        if (activeView === 'rule')       { container.innerHTML = renderRuleView(); initDonutChart(); }
+        else if (activeView === 'ml')    { container.innerHTML = renderMLView(); }
+        else if (activeView === 'qa')    { container.innerHTML = renderQAView(); }
+        else if (activeView === 'mc')    { container.innerHTML = renderMonteCarloView(); initMonteCarloChart(); }
+        else if (activeView === 'exceptions') { container.innerHTML = renderExceptionsView(); }
+        container.querySelectorAll('.fade-in').forEach(el => el.classList.add('fade-in'));
+    }
+
+    // ─── VIEW: RULE ENGINE ───────────────────────────────────────────────────────
+    function renderRuleView() {
+        const rec = systemData?.reconcile ?? {};
+        const tierSummary = rec.tier_summary ?? {};
+        const total = rec.total_records ?? 0;
+        const t1 = tierSummary['TIER_1_EXACT'] ?? 0;
+        const t2 = tierSummary['TIER_2_FEE_ADJUSTED'] ?? 0;
+        const t3 = tierSummary['TIER_3_FUZZY_REF'] ?? 0;
+        const t4 = tierSummary['TIER_4_UNMATCHED'] ?? 0;
+        const matched = t1 + t2 + t3;
+        const matchRate = total > 0 ? ((matched / total) * 100).toFixed(2) : '—';
+        const excCount = systemData?.exceptions?.count ?? '—';
+
+        const records = rec.records ? rec.records.slice(0, 15) : [];
+        const tableRows = records.map(r => {
+            const tierColor = r.match_tier === 'TIER_1_EXACT'
+                ? 'text-[#15803d] bg-[#dcfce7]'
+                : r.match_tier === 'TIER_2_FEE_ADJUSTED'
+                    ? 'text-[#0369a1] bg-[#e0f2fe]'
+                    : r.match_tier === 'TIER_3_FUZZY_REF'
+                        ? 'text-[#7c3aed] bg-[#ede9fe]'
+                        : 'text-error bg-error-container';
+            const confColor = r.confidence_score >= 0.8 ? 'text-[#15803d]' : r.confidence_score >= 0.5 ? 'text-[#b45309]' : 'text-error';
+            const amt = typeof r.net_amount === 'number' ? '₹' + r.net_amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
+            const diff = typeof r.amount_diff === 'number' ? '₹' + r.amount_diff.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
+            return `
+                <tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+                    <td class="p-3 font-mono text-xs text-on-surface-variant font-medium">${r.ledger_txn_id ?? '—'}</td>
+                    <td class="p-3 font-mono text-xs">${r.merchant_order_id ?? 'N/A'}</td>
+                    <td class="p-3 font-semibold text-sm">${amt}</td>
+                    <td class="p-3 text-on-surface-variant text-sm">${diff}</td>
+                    <td class="p-3">
+                        <span class="text-xs font-bold ${tierColor} px-2 py-1 rounded">${r.match_tier ?? '—'}</span>
+                    </td>
+                    <td class="p-3 text-right font-mono font-bold text-sm ${confColor}">${r.confidence_score ?? '—'}</td>
+                </tr>`;
+        }).join('');
+
+        return `
+        <div class="fade-in grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-card rounded-xl p-4 flex flex-col gap-1 glow-active">
+                <span class="text-xs text-on-surface-variant uppercase tracking-widest font-bold">Total Batch Records</span>
+                <div class="flex items-baseline justify-between">
+                    <span class="text-4xl font-bold text-on-surface">${total}</span>
+                    <span class="material-symbols-outlined text-outline">database</span>
+                </div>
+                <span class="text-xs text-on-surface-variant">Bank Statement vs Settlement Ledger</span>
+            </div>
+            <div class="glass-card rounded-xl p-4 flex flex-col gap-1">
+                <span class="text-xs text-on-surface-variant uppercase tracking-widest font-bold">Deterministic Match Rate</span>
+                <div class="flex items-baseline justify-between">
+                    <span class="text-4xl font-bold text-on-surface">${matchRate}<span class="text-xl text-on-surface-variant">%</span></span>
+                    <span class="material-symbols-outlined text-[#16a34a]">check_circle</span>
+                </div>
+                <span class="text-xs font-bold text-[#15803d] bg-[#dcfce7] px-2 py-0.5 rounded w-fit uppercase">${matched} of ${total} Rule Matched</span>
+            </div>
+            <div class="glass-card rounded-xl p-4 flex flex-col gap-1">
+                <span class="text-xs text-on-surface-variant uppercase tracking-widest font-bold">Tier Breakdown</span>
+                <div class="flex items-baseline justify-between">
+                    <span class="text-4xl font-bold text-on-surface">${matched}</span>
+                    <span class="material-symbols-outlined text-primary">join</span>
+                </div>
+                <div class="flex flex-wrap gap-1 mt-1">
+                    <span class="text-xs font-bold text-[#15803d] bg-[#dcfce7] px-1.5 py-0.5 rounded">T1: ${t1}</span>
+                    <span class="text-xs font-bold text-[#0369a1] bg-[#e0f2fe] px-1.5 py-0.5 rounded">T2: ${t2}</span>
+                    ${t3 > 0 ? `<span class="text-xs font-bold text-[#7c3aed] bg-[#ede9fe] px-1.5 py-0.5 rounded">T3: ${t3}</span>` : ''}
+                    <span class="text-xs font-bold text-error bg-error-container px-1.5 py-0.5 rounded">T4: ${t4}</span>
+                </div>
+            </div>
+            <div class="glass-card rounded-xl p-4 flex flex-col gap-1 border-l-4 border-l-error">
+                <span class="text-xs text-on-surface-variant uppercase tracking-widest font-bold">Honest Exceptions</span>
+                <div class="flex items-baseline justify-between">
+                    <span class="text-4xl font-bold text-on-surface">${excCount}</span>
+                    <span class="material-symbols-outlined text-error">warning</span>
+                </div>
+                <span class="text-xs font-bold text-error bg-error-container px-2 py-0.5 rounded w-fit uppercase">Manual Review Required</span>
+            </div>
+        </div>
+
+        <div class="fade-in grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-8 glass-card rounded-xl flex flex-col overflow-hidden">
+                <div class="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-lowest">
+                    <h2 class="text-lg font-bold">Financial Transaction Reconciliation</h2>
+                    <input id="table-search" onkeyup="filterTable()" placeholder="Search order ID…" class="text-xs border border-outline-variant rounded-lg px-3 py-1.5 bg-surface-container-low focus:outline-none focus:border-primary w-44"/>
+                </div>
+                <div class="overflow-x-auto bg-surface-container-lowest">
+                    <table class="w-full text-left border-collapse" id="recon-table">
+                        <thead>
+                            <tr class="border-b border-outline-variant bg-surface-container-low text-xs text-on-surface-variant uppercase font-bold">
+                                <th class="p-3">Ledger ID</th>
+                                <th class="p-3">Order ID</th>
+                                <th class="p-3">Net Amt</th>
+                                <th class="p-3">Diff</th>
+                                <th class="p-3">Match Tier</th>
+                                <th class="p-3 text-right">Conf.</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm" id="table-body">${tableRows}</tbody>
+                    </table>
+                </div>
+                ${records.length === 0 ? '<div class="p-8 text-center text-on-surface-variant text-sm">No records loaded — try refreshing.</div>' : ''}
+            </div>
+
+            <div class="lg:col-span-4 glass-card rounded-xl flex flex-col p-4 items-center justify-center relative min-h-[320px] bg-surface-container-lowest">
+                <h3 class="text-sm font-bold text-on-surface absolute top-4 left-4">Match Tier Breakdown</h3>
+                <div class="w-56 h-56 relative flex items-center justify-center mt-6">
+                    <canvas id="donutChartCanvas"></canvas>
+                </div>
+                <div class="flex flex-col gap-1 w-full mt-3 text-xs font-semibold text-on-surface-variant px-2">
+                    <div class="flex justify-between"><span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-[#16a34a] inline-block"></span>Tier 1 Exact</span><span>${t1}</span></div>
+                    <div class="flex justify-between"><span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-[#0284c7] inline-block"></span>Tier 2 Fee Adjusted</span><span>${t2}</span></div>
+                    ${t3 > 0 ? `<div class="flex justify-between"><span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-[#7c3aed] inline-block"></span>Tier 3 Fuzzy</span><span>${t3}</span></div>` : ''}
+                    <div class="flex justify-between"><span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-[#ea580c] inline-block"></span>Tier 4 Unmatched</span><span>${t4}</span></div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function initDonutChart() {
+        setTimeout(() => {
+            const ctx = document.getElementById('donutChartCanvas');
+            if (!ctx) return;
+            if (donutChart) { donutChart.destroy(); donutChart = null; }
+
+            const tierSummary = systemData?.reconcile?.tier_summary ?? {};
+            const t1 = tierSummary['TIER_1_EXACT'] ?? 0;
+            const t2 = tierSummary['TIER_2_FEE_ADJUSTED'] ?? 0;
+            const t3 = tierSummary['TIER_3_FUZZY_REF'] ?? 0;
+            const t4 = tierSummary['TIER_4_UNMATCHED'] ?? 0;
+
+            const labels = ['Tier 1 Exact', 'Tier 2 Fee Adjusted'];
+            const data = [t1, t2];
+            const colors = ['#16a34a', '#0284c7'];
+            if (t3 > 0) { labels.push('Tier 3 Fuzzy'); data.push(t3); colors.push('#7c3aed'); }
+            labels.push('Tier 4 Unmatched'); data.push(t4); colors.push('#ea580c');
+
+            donutChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    cutout: '70%'
+                }
+            });
+        }, 100);
+    }
+
+    // ─── VIEW: ML CONFIDENCE SCORING ────────────────────────────────────────────
+    function renderMLView() {
+        const ml = systemData?.ml ?? {};
+        const lr = ml.baseline_lr ?? {};
+        const rf = ml.random_forest ?? {};
+        const fi = ml.feature_importances ?? {};
+        const cs = ml.case_study_example;
+        const nSplits = ml.n_splits ?? 5;
+        const datasetSize = ml.total_dataset_size ?? '—';
+
+        const fmt = (v, std) => v !== undefined
+            ? `<span class="font-mono">${Number(v).toFixed(4)}</span>${std !== undefined ? `<span class="text-on-surface-variant text-xs"> ± ${Number(std).toFixed(4)}</span>` : ''}`
+            : '—';
+
+        const fiSorted = Object.entries(fi).sort((a,b) => b[1]-a[1]);
+        const fiBars = fiSorted.map(([k, v]) => {
+            const pct = (v * 100).toFixed(1);
+            return `<div>
+                <div class="flex justify-between text-xs font-semibold mb-1">
+                    <span class="font-mono">${k}</span>
+                    <span class="text-primary">${pct}%</span>
+                </div>
+                <div class="w-full bg-surface-container-low h-3 rounded-full overflow-hidden">
+                    <div class="bg-primary h-full rounded-full transition-all" style="width:${pct}%"></div>
+                </div>
+            </div>`;
+        }).join('');
+
+        const caseStudyHtml = cs ? `
+            <div class="glass-card rounded-xl p-5 flex flex-col gap-3 border-l-4 border-l-primary">
+                <h3 class="text-base font-bold flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-[20px]">biotech</span>
+                    Live Case Study: LR Failure vs RF Success
+                </h3>
+                <div class="text-sm text-on-surface-variant">
+                    Record <code class="bg-surface-container px-1.5 py-0.5 rounded font-mono text-primary">${cs.ledger_txn_id}</code>
+                    — Category: <code class="bg-surface-container px-1.5 py-0.5 rounded font-mono">${cs.category}</code>
+                </div>
+                <div class="font-mono text-xs text-on-surface-variant bg-surface-container-low rounded-lg p-3 border border-outline-variant break-all">
+                    Bank Narration: <span class="text-on-surface font-semibold">${cs.bank_narration}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-error-container rounded-lg p-3 flex flex-col gap-1">
+                        <span class="text-xs font-bold text-error uppercase">Logistic Regression</span>
+                        <span class="text-2xl font-bold text-error">${cs.logistic_regression_pred === 0 ? 'WRONG ✗' : 'CORRECT ✓'}</span>
+                        <span class="text-xs text-on-surface-variant font-mono">Prob: ${cs.logistic_regression_prob}</span>
+                        <span class="text-xs text-on-surface-variant">Predicted: ${cs.logistic_regression_pred === 1 ? 'MATCH' : 'NON-MATCH'}</span>
+                    </div>
+                    <div class="bg-[#dcfce7] rounded-lg p-3 flex flex-col gap-1">
+                        <span class="text-xs font-bold text-[#15803d] uppercase">Random Forest</span>
+                        <span class="text-2xl font-bold text-[#15803d]">${cs.random_forest_pred === cs.ground_truth_label ? 'CORRECT ✓' : 'WRONG ✗'}</span>
+                        <span class="text-xs text-on-surface-variant font-mono">Prob: ${cs.random_forest_prob}</span>
+                        <span class="text-xs text-on-surface-variant">Predicted: ${cs.random_forest_pred === 1 ? 'MATCH' : 'NON-MATCH'}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-xs font-mono">
+                    ${Object.entries(cs.features).map(([k,v]) => `
+                        <div class="bg-surface-container rounded p-2 flex flex-col">
+                            <span class="text-on-surface-variant text-[10px] font-sans uppercase">${k.replace(/_/g,' ')}</span>
+                            <span class="font-bold text-on-surface">${v}</span>
+                        </div>`).join('')}
+                </div>
+            </div>` : '';
+
+        return `
+        <div class="fade-in glass-card rounded-xl p-6 flex flex-col gap-5">
+            <div>
+                <h2 class="text-xl font-bold">Component 2: ML Confidence Scoring Engine</h2>
+                <p class="text-sm text-on-surface-variant mt-1">
+                    Evaluated using <strong>Stratified Group ${nSplits}-Fold Cross-Validation</strong> (grouped on <code class="bg-surface-container px-1 rounded font-mono text-xs">ledger_txn_id</code> to prevent entity-level group leakage).
+                    Dataset: <strong>${datasetSize} candidate pairs</strong> (positive ground-truth + hard negative near-misses + random negatives).
+                </p>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-outline-variant bg-surface-container-low text-xs text-on-surface-variant uppercase font-bold">
+                            <th class="p-3">Evaluation Metric</th>
+                            <th class="p-3">Logistic Regression (Baseline)</th>
+                            <th class="p-3 text-primary">Random Forest Classifier ✓</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm font-medium">
+                        <tr class="border-b border-outline-variant"><td class="p-3 font-semibold">Precision</td>
+                            <td class="p-3">${fmt(lr.precision, lr.precision_std)}</td>
+                            <td class="p-3 text-primary">${fmt(rf.precision, rf.precision_std)}</td></tr>
+                        <tr class="border-b border-outline-variant"><td class="p-3 font-semibold">Recall</td>
+                            <td class="p-3">${fmt(lr.recall, lr.recall_std)}</td>
+                            <td class="p-3 text-primary">${fmt(rf.recall, rf.recall_std)}</td></tr>
+                        <tr class="border-b border-outline-variant"><td class="p-3 font-semibold">F1-Score</td>
+                            <td class="p-3">${fmt(lr.f1, lr.f1_std)}</td>
+                            <td class="p-3 text-primary font-bold">${fmt(rf.f1, rf.f1_std)}</td></tr>
+                        <tr class="border-b border-outline-variant"><td class="p-3 font-semibold">ROC-AUC</td>
+                            <td class="p-3">${fmt(lr.roc_auc, lr.roc_auc_std)}</td>
+                            <td class="p-3 text-primary">${fmt(rf.roc_auc, rf.roc_auc_std)}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div>
+                <h3 class="text-base font-bold mb-3">Random Forest Feature Importance (from final trained model)</h3>
+                <div class="space-y-2.5">${fiBars || '<p class="text-sm text-on-surface-variant">Feature importances not available.</p>'}</div>
+            </div>
+        </div>
+        ${caseStudyHtml}`;
+    }
+
+    // ─── VIEW: Q&A AGENT ────────────────────────────────────────────────────────
+    function renderQAView() {
+        return `
+        <div class="fade-in glass-card rounded-xl p-6 flex flex-col gap-4">
+            <h2 class="text-xl font-bold flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">psychology</span>
+                Settlement Q&amp;A Agent (RAG)
+            </h2>
+            <p class="text-sm text-on-surface-variant">
+                Ask questions grounded in ChromaDB vector storage records. Answers are generated by the AI Finance Assistant with direct fallback to vector context.
+            </p>
+            <div class="flex gap-2">
+                <input id="main-qa-input" value="Why didn't ORD_20260812_1123 reconcile?" class="flex-1 bg-surface-container-low border border-outline-variant rounded-lg p-3 text-sm focus:outline-none focus:border-primary"/>
+                <button id="qa-btn" onclick="handleMainQASubmit()" class="bg-primary text-on-primary px-6 py-3 rounded-lg font-semibold hover:bg-primary-container transition-colors">Ask Copilot</button>
+            </div>
+            <div id="qa-answer-box" class="hidden p-4 bg-surface-container-low rounded-xl border border-outline-variant text-sm leading-relaxed"></div>
+        </div>`;
+    }
+
+    // ─── VIEW: MONTE CARLO ───────────────────────────────────────────────────────
+    function renderMonteCarloView() {
+        const fc = systemData?.forecast ?? {};
+        const p10 = fc.p10_pessimistic;
+        const p50 = fc.p50_median;
+        const p90 = fc.p90_optimistic;
+        const mean = fc.mean_forecast;
+        const std = fc.std_dev_forecast;
+        const sims = fc.num_simulations ?? 10000;
+        const spread = (p90 && p10) ? (p90 - p10).toLocaleString('en-IN', {maximumFractionDigits: 0}) : '—';
+
+        const inrFmt = v => v != null ? '₹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
+
+        return `
+        <div class="fade-in grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="glass-card rounded-xl p-5 flex flex-col gap-1 border-l-4 border-l-error">
+                <span class="text-xs font-bold text-on-surface-variant uppercase">P10 — Pessimistic (10th Percentile)</span>
+                <span class="text-3xl font-bold text-on-surface">${inrFmt(p10)}</span>
+                <span class="text-xs text-on-surface-variant">10% chance cash falls below this</span>
+            </div>
+            <div class="glass-card rounded-xl p-5 flex flex-col gap-1 border-l-4 border-l-primary">
+                <span class="text-xs font-bold text-on-surface-variant uppercase">P50 — Median Expected</span>
+                <span class="text-3xl font-bold text-on-surface">${inrFmt(p50)}</span>
+                <span class="text-xs text-on-surface-variant">Most likely 30-day cash position</span>
+            </div>
+            <div class="glass-card rounded-xl p-5 flex flex-col gap-1 border-l-4 border-l-[#16a34a]">
+                <span class="text-xs font-bold text-on-surface-variant uppercase">P90 — Optimistic (90th Percentile)</span>
+                <span class="text-3xl font-bold text-on-surface">${inrFmt(p90)}</span>
+                <span class="text-xs text-on-surface-variant">10% chance cash exceeds this</span>
+            </div>
+        </div>
+
+        <div class="fade-in glass-card rounded-xl p-6 flex flex-col gap-4">
+            <div class="flex justify-between items-start flex-wrap gap-2">
+                <div>
+                    <h3 class="text-lg font-bold">30-Day Cash Flow Probability Distribution</h3>
+                    <p class="text-sm text-on-surface-variant">${sims.toLocaleString()} Monte Carlo simulation runs — 3 stochastic sources: daily inflow variance, MDR fee rate variance, settlement lag penalties.</p>
+                </div>
+                <div class="flex gap-4 text-sm font-mono text-on-surface-variant">
+                    ${mean ? `<div class="flex flex-col"><span class="text-[10px] uppercase font-semibold font-sans tracking-wide">Mean</span><span class="font-bold text-on-surface">${inrFmt(mean)}</span></div>` : ''}
+                    ${std ? `<div class="flex flex-col"><span class="text-[10px] uppercase font-semibold font-sans tracking-wide">Std Dev</span><span class="font-bold text-on-surface">${inrFmt(std)}</span></div>` : ''}
+                    ${spread !== '—' ? `<div class="flex flex-col"><span class="text-[10px] uppercase font-semibold font-sans tracking-wide">P10–P90 Spread</span><span class="font-bold text-on-surface">₹${spread}</span></div>` : ''}
+                </div>
+            </div>
+            <div class="h-64 relative">
+                <canvas id="mcChartCanvas"></canvas>
+            </div>
+        </div>`;
+    }
+
+    function initMonteCarloChart() {
+        setTimeout(() => {
+            const ctx = document.getElementById('mcChartCanvas');
+            if (!ctx) return;
+            if (mcChart) { mcChart.destroy(); mcChart = null; }
+
+            const fc = systemData?.forecast ?? {};
+            const p50 = fc.p50_median ?? 251000;
+            const std = fc.std_dev_forecast ?? 18000;
+            const center = Math.round(p50 / 1000);
+            const range = Math.round((std * 3) / 1000);
+
+            const labels = [], data = [];
+            for (let i = center - range; i <= center + range; i += Math.max(1, Math.round(range / 15))) {
+                labels.push('₹' + i + 'k');
+                const z = (i - center) / (std / 1000);
+                data.push(Math.exp(-0.5 * z * z) * 100);
+            }
+
+            mcChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Cash Flow Probability Density',
+                        data,
+                        borderColor: '#0058be',
+                        backgroundColor: 'rgba(0, 88, 190, 0.12)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { display: false },
+                        x: { ticks: { font: { size: 11 }, maxTicksLimit: 8 } }
+                    }
+                }
+            });
+        }, 100);
+    }
+
+    // ─── VIEW: HONEST EXCEPTIONS ─────────────────────────────────────────────────
+    function renderExceptionsView() {
+        const excData = systemData?.exceptions ?? {};
+        const exceptions = excData.exceptions ?? [];
+        const count = excData.count ?? exceptions.length;
+
+        const rows = exceptions.map(e => `
+            <tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+                <td class="p-3 font-mono text-xs font-medium text-on-surface-variant">${e.record_id ?? '—'}</td>
+                <td class="p-3 font-mono text-xs">${e.order_id ?? '—'}</td>
+                <td class="p-3">
+                    <span class="text-xs font-bold px-2 py-1 rounded ${e.exception_type === 'UNRESOLVED_RECONCILIATION' ? 'text-error bg-error-container' : 'text-[#b45309] bg-[#fef3c7]'}">${e.exception_type ?? '—'}</span>
+                </td>
+                <td class="p-3 text-error font-mono font-bold text-sm">${typeof e.confidence_score === 'number' ? e.confidence_score.toFixed(4) : e.confidence_score ?? '—'}</td>
+                <td class="p-3 text-on-surface-variant text-xs">${e.issue_description ?? '—'}</td>
+                <td class="p-3"><span class="text-xs font-bold text-error bg-error-container px-2 py-1 rounded uppercase whitespace-nowrap">${e.action_required ?? 'Manual Review'}</span></td>
+            </tr>`).join('');
+
+        return `
+        <div class="fade-in glass-card rounded-xl p-6 flex flex-col gap-4">
+            <div class="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                    <h2 class="text-xl font-bold text-error flex items-center gap-2">
+                        <span class="material-symbols-outlined">warning</span>
+                        Honest Exception List
+                    </h2>
+                    <p class="text-sm text-on-surface-variant mt-1">
+                        All reconciliation records failing automated confidence threshold (&lt; 0.70) — surfaced for mandatory Finance Controller review before ledger posting.
+                    </p>
+                </div>
+                <div class="glass-card rounded-xl p-4 flex flex-col items-center min-w-[100px] border-l-4 border-l-error">
+                    <span class="text-3xl font-bold text-error">${count}</span>
+                    <span class="text-xs font-bold text-on-surface-variant uppercase">Unresolved</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-outline-variant bg-surface-container-low text-xs text-on-surface-variant uppercase font-bold">
+                            <th class="p-3">Record ID</th>
+                            <th class="p-3">Order ID</th>
+                            <th class="p-3">Type</th>
+                            <th class="p-3">Confidence</th>
+                            <th class="p-3">Issue</th>
+                            <th class="p-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm">${rows || '<tr><td colspan="6" class="p-8 text-center text-on-surface-variant">No exceptions found — all records resolved!</td></tr>'}</tbody>
+                </table>
+            </div>
+        </div>`;
+    }
+
+    function renderStructuredResponse(res) {
+        const engine = res.llm_engine || 'AI Finance Assistant';
+        const answerStr = res.answer || '';
+        const metadata = res.retrieved_metadata || [];
+
+        // Check for Insufficient Evidence
+        if (answerStr.includes('INSUFFICIENT EVIDENCE') || answerStr.includes('Insufficient evidence in the available reconciliation records')) {
+            return `
+            <div class="glass-card rounded-xl p-4 border-l-4 border-l-amber-500 bg-surface-container-low flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <span class="bg-amber-500/20 text-amber-600 text-xs font-bold px-2.5 py-1 rounded-full uppercase flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">warning</span> Insufficient Evidence
+                    </span>
+                    <span class="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">${escHtml(engine)}</span>
+                </div>
+                <p class="text-sm font-medium text-on-surface mt-1">Insufficient evidence in the available reconciliation records to answer reliably.</p>
+            </div>`;
+        }
+
+        // ─── DERIVE RECONCILIATION BADGE FROM RETRIEVED RECORD DATA ───────────────
+        let rawStatus = '';
+        let rawTier = '';
+
+        // 1. Primary Source: Retrieved Record Metadata
+        if (metadata && metadata.length > 0) {
+            rawStatus = (metadata[0].status || '').toUpperCase();
+            rawTier = (metadata[0].match_tier || '').toUpperCase();
+        }
+
+        // 2. Secondary Source: Parse 'Status:' and 'Match Tier:' from response text
+        const statusTextMatch = answerStr.match(/- Status:\s*([^\n]+)/i);
+        if (statusTextMatch && statusTextMatch[1] && statusTextMatch[1].trim() !== 'N/A') {
+            rawStatus = statusTextMatch[1].trim().toUpperCase();
+        }
+        const tierTextMatch = answerStr.match(/- Match Tier:\s*([^\n]+)/i);
+        if (tierTextMatch && tierTextMatch[1] && tierTextMatch[1].trim() !== 'N/A') {
+            rawTier = tierTextMatch[1].trim().toUpperCase();
+        }
+
+        let statusBadgeText = 'SETTLEMENT ANALYSIS';
+        let statusBadgeClass = 'bg-primary/10 text-primary border-primary/20';
+
+        // Check UNMATCHED / EXCEPTION / TIER 4 FIRST (Mandatory: Never show RECONCILIED for UNMATCHED/TIER 4)
+        const isUnmatched = rawStatus.includes('UNMATCHED') || 
+                            rawStatus.includes('FLAGGED') || 
+                            rawStatus.includes('EXCEPTION') || 
+                            rawTier.includes('TIER_4') || 
+                            rawTier.includes('UNMATCHED');
+
+        if (isUnmatched) {
+            statusBadgeText = 'UNMATCHED';
+            statusBadgeClass = 'bg-rose-500/10 text-rose-600 border-rose-500/20';
+        } else if (rawTier.includes('TIER_1') || rawTier.includes('TIER 1')) {
+            statusBadgeText = 'RECONCILIED (TIER 1)';
+            statusBadgeClass = 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+        } else if (rawTier.includes('TIER_2') || rawTier.includes('TIER 2')) {
+            statusBadgeText = 'RECONCILIED (TIER 2)';
+            statusBadgeClass = 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+        } else if (rawTier.includes('TIER_3') || rawTier.includes('TIER 3')) {
+            statusBadgeText = 'RECONCILIATION (TIER 3 MATCH)';
+            statusBadgeClass = 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+        } else if (rawStatus === 'MATCHED' || (rawStatus.includes('MATCHED') && !rawStatus.includes('UNMATCHED'))) {
+            statusBadgeText = 'RECONCILIED';
+            statusBadgeClass = 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+        } else if (answerStr.includes('DATA SUMMARY')) {
+            statusBadgeText = 'DATA SUMMARY';
+            statusBadgeClass = 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+        }
+
+        // Key-Value Grid Extraction
+        let txDetailsHtml = '';
+        const kvMatches = answerStr.match(/- ([^:\n]+):\s*([^\n]+)/g);
+        if (kvMatches && kvMatches.length > 0) {
+            let items = kvMatches.map(m => {
+                const parts = m.replace(/^- /, '').split(':');
+                const key = parts[0].trim();
+                const val = parts.slice(1).join(':').trim();
+                return `<div class="bg-surface-container-lowest p-2 rounded-lg border border-outline-variant/60">
+                    <span class="text-[10px] font-bold text-on-surface-variant uppercase block">${escHtml(key)}</span>
+                    <span class="text-xs font-semibold text-on-surface mt-0.5 block">${escHtml(val)}</span>
+                </div>`;
+            });
+            txDetailsHtml = `<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 my-2">${items.join('')}</div>`;
+        }
+
+        // Key Finding Extraction
+        let whyHtml = '';
+        const keyFindingMatch = answerStr.match(/(?:Why it was flagged \/ Why it reconciled:|KEY FINDING)\s*\n+([\s\S]*?)(?=\n\n(?:Evidence:|EVIDENCE|Recommended Action:|$))/i);
+        if (keyFindingMatch && keyFindingMatch[1].trim()) {
+            const text = keyFindingMatch[1].trim().replace(/^[-\*\s]+/, '');
+            whyHtml = `
+            <div class="glass-card rounded-xl p-3 border-l-4 border-l-primary bg-primary/5 my-2">
+                <span class="text-xs font-bold text-primary uppercase flex items-center gap-1 mb-1">
+                    <span class="material-symbols-outlined text-[14px]">analytics</span> Key Finding
+                </span>
+                <p class="text-xs sm:text-sm text-on-surface font-medium leading-relaxed">${escHtml(text)}</p>
+            </div>`;
+        }
+
+        // Evidence Extraction
+        let evidenceHtml = '';
+        const evidenceMatch = answerStr.match(/(?:Evidence:|EVIDENCE)\s*\n+([\s\S]*?)(?=\n\n(?:Recommended Action:|$))/i);
+        if (evidenceMatch && evidenceMatch[1].trim()) {
+            const text = evidenceMatch[1].trim();
+            evidenceHtml = `
+            <div class="bg-surface-container-lowest rounded-xl p-3 border border-outline-variant my-2">
+                <span class="text-xs font-bold text-on-surface-variant uppercase flex items-center gap-1 mb-1.5">
+                    <span class="material-symbols-outlined text-[14px]">verified</span> Evidence & Metrics
+                </span>
+                <div class="text-xs text-on-surface whitespace-pre-wrap leading-normal font-mono bg-surface-container-low p-2 rounded-lg">${escHtml(text)}</div>
+            </div>`;
+        }
+
+        // Metadata Record ID Chips
+        let metaChips = '';
+        if (metadata && metadata.length > 0) {
+            const chips = metadata.map(m => {
+                const lid = m.ledger_txn_id || 'RECORD';
+                const oid = m.merchant_order_id ? `(${m.merchant_order_id})` : '';
+                return `<span class="bg-surface-container-high text-on-surface text-[11px] font-mono font-semibold px-2 py-0.5 rounded border border-outline-variant inline-flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[12px] text-primary">receipt_long</span> ${escHtml(lid)} ${escHtml(oid)}
+                </span>`;
+            }).join(' ');
+            metaChips = `
+            <div class="mt-2 pt-2 border-t border-outline-variant/60 flex flex-wrap items-center gap-1.5">
+                <span class="text-[10px] font-bold text-on-surface-variant uppercase mr-1">Retrieved Records:</span>
+                ${chips}
+            </div>`;
+        }
+
+        // Recommended Action Extraction
+        let actionHtml = '';
+        const actionMatch = answerStr.match(/Recommended Action:\s*\n+([\s\S]*?)$/i);
+        if (actionMatch && actionMatch[1].trim()) {
+            const actText = actionMatch[1].trim().replace(/^[-\*\s]+/, '');
+            actionHtml = `
+            <div class="bg-surface-container-high p-2.5 rounded-xl border border-outline-variant flex items-start gap-2 mt-2">
+                <span class="material-symbols-outlined text-primary text-[18px] mt-0.5">assignment_turned_in</span>
+                <div>
+                    <span class="text-xs font-bold text-on-surface uppercase block">Recommended Action</span>
+                    <span class="text-xs text-on-surface-variant">${escHtml(actText)}</span>
+                </div>
+            </div>`;
+        }
+
+        // Fallback for unstructured text
+        if (!txDetailsHtml && !whyHtml && !evidenceHtml) {
+            return `
+            <div class="glass-card rounded-xl p-4 border border-outline-variant bg-surface-container-low flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold px-2.5 py-0.5 rounded-full uppercase border ${statusBadgeClass}">
+                        ${escHtml(statusBadgeText)}
+                    </span>
+                    <span class="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">${escHtml(engine)}</span>
+                </div>
+                <div class="text-xs sm:text-sm text-on-surface leading-relaxed whitespace-pre-wrap font-sans mt-1">${escHtml(answerStr)}</div>
+                ${metaChips}
+            </div>`;
+        }
+
+        return `
+        <div class="glass-card rounded-xl p-4 border border-outline-variant bg-surface-container-low flex flex-col gap-2">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold px-2.5 py-0.5 rounded-full uppercase border flex items-center gap-1 ${statusBadgeClass}">
+                    <span class="material-symbols-outlined text-[14px]">shield</span> ${escHtml(statusBadgeText)}
+                </span>
+                <span class="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">${escHtml(engine)}</span>
+            </div>
+            ${txDetailsHtml}
+            ${whyHtml}
+            ${evidenceHtml}
+            ${actionHtml}
+            ${metaChips}
+        </div>`;
+    }
+
+    // ─── CHAT / Q&A HANDLERS ────────────────────────────────────────────────────
+    async function handleChatSubmit(e) {
+        e.preventDefault();
+        const input = document.getElementById('chat-input');
+        const query = input.value.trim();
+        if (!query) return;
+        const chatBox = document.getElementById('chat-messages');
+        chatBox.innerHTML += `<div class="bg-primary text-on-primary p-3 rounded-xl rounded-tr-none self-end max-w-[88%] shadow-sm"><p class="text-sm">${escHtml(query)}</p></div>`;
+        chatBox.innerHTML += `<div id="chat-thinking" class="bg-surface-container-low p-3 rounded-xl rounded-tl-none self-start border border-outline-variant shadow-sm"><div class="spinner" style="width:16px;height:16px;border-width:2px;"></div></div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+        input.value = '';
+        try {
+            const res = await fetch('/api/qa', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({query})}).then(r=>r.json());
+            document.getElementById('chat-thinking').remove();
+            chatBox.innerHTML += `<div class="self-start max-w-[98%] text-on-surface-variant my-1">${renderStructuredResponse(res)}</div>`;
+        } catch (err) {
+            document.getElementById('chat-thinking')?.remove();
+            chatBox.innerHTML += `<div class="bg-surface-container-low p-3 rounded-xl rounded-tl-none self-start max-w-[95%] border border-outline-variant shadow-sm"><p class="text-sm text-error">API Error querying Copilot.</p></div>`;
+        }
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function handleMainQASubmit() {
+        const input = document.getElementById('main-qa-input');
+        const box = document.getElementById('qa-answer-box');
+        const btn = document.getElementById('qa-btn');
+        box.classList.remove('hidden');
+        box.innerHTML = '<div class="flex items-center gap-2 text-on-surface-variant"><div class="spinner" style="width:16px;height:16px;border-width:2px;"></div> Querying ChromaDB vector index…</div>';
+        btn.disabled = true;
+        try {
+            const res = await fetch('/api/qa', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({query: input.value})}).then(r=>r.json());
+            box.innerHTML = renderStructuredResponse(res);
+        } catch (e) {
+            box.innerHTML = '<p class="text-error text-sm">Error fetching answer from backend.</p>';
+        }
+        btn.disabled = false;
+    }
+
+    // ─── TABLE SEARCH ────────────────────────────────────────────────────────────
+    function filterTable() {
+        const filter = document.getElementById('table-search').value.toUpperCase();
+        document.querySelectorAll('#recon-table tbody tr').forEach(r => {
+            r.style.display = (r.textContent || r.innerText).toUpperCase().includes(filter) ? '' : 'none';
+        });
+    }
+
+    // ─── UTILITIES ───────────────────────────────────────────────────────────────
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function refreshData() { loadData(); }
+
+    // ─── BOOT ────────────────────────────────────────────────────────────────────
+    window.onload = loadData;
+</script>
+</body>
+</html>
